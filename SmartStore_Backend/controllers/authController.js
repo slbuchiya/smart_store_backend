@@ -1,38 +1,58 @@
+// controllers/authController.js
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
 const Store = require('../models/Store');
 
 exports.storeLogin = async (req, res) => {
-    try {
-        const { storeId, password } = req.body;
-        const store = await Store.findOne({ storeId });
+  try {
+    const { storeId, password } = req.body;
 
-        if (!store) return res.status(404).json({ error: 'Store not found' });
-        if (store.password !== password) return res.status(401).json({ error: 'Invalid password' }); // Production માં bcrypt વાપરવું
-        if (store.status === 'suspended') return res.status(403).json({ error: 'Account Suspended' });
-
-        const token = jwt.sign({ id: store._id, storeId: store.storeId, role: 'store_owner' }, process.env.JWT_SECRET);
-
-        res.json({
-            token,
-            storeId: store.storeId,
-            name: store.storeName,
-            ownerName: store.ownerName,
-            address: store.address,
-            gst: store.gst,
-            mobile: store.mobile,
-            role: 'store_owner'
-        });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
+    if (!storeId || !password) {
+      return res.status(400).json({ error: 'storeId and password are required' });
     }
-};
 
-exports.adminLogin = async (req, res) => {
-    const { adminId, password } = req.body;
-    if (adminId === "admin" && password === "admin123") {
-        const token = jwt.sign({ role: 'admin' }, process.env.JWT_SECRET);
-        res.json({ token, role: 'admin', name: 'Super Admin' });
+    const store = await Store.findOne({ storeId });
+    if (!store) {
+      console.warn(`Login attempt: store not found for storeId=${storeId}`);
+      return res.status(404).json({ error: 'Store not found' });
+    }
+
+    // If password stored hashed (recommended)
+    const isHashed = typeof store.password === 'string' && store.password.startsWith('$2');
+    if (isHashed) {
+      const match = await bcrypt.compare(password, store.password);
+      if (!match) {
+        console.warn(`Invalid password for storeId=${storeId}`);
+        return res.status(401).json({ error: 'Invalid password' });
+      }
     } else {
-        res.status(401).json({ error: 'Invalid Admin Credentials' });
+      // fallback (not recommended for production)
+      if (store.password !== password) {
+        console.warn(`Invalid plain password for storeId=${storeId}`);
+        return res.status(401).json({ error: 'Invalid password' });
+      }
     }
+
+    if (store.status === 'suspended') {
+      return res.status(403).json({ error: 'Account Suspended' });
+    }
+
+    const token = jwt.sign(
+      { id: store._id, storeId: store.storeId, role: 'store_owner' },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.json({
+      token,
+      storeId: store.storeId,
+      storeName: store.storeName,
+      ownerName: store.ownerName,
+      mobile: store.mobile
+    });
+
+  } catch (err) {
+    console.error('storeLogin error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 };
