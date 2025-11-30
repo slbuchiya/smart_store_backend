@@ -1,30 +1,18 @@
-// config/db.js
-const path = require('path');
-const sqlite3 = require('sqlite3');
-const { open } = require('sqlite');
+// config/db.js - MongoDB connection using mongoose
+const mongoose = require('mongoose');
 
-const dbPath = path.join(__dirname, '..', 'data.sqlite');
+const connectDB = async () => {
+  try {
+    const conn = await mongoose.connect(process.env.MONGO_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true
+    });
 
-let dbPromise = open({
-    filename: dbPath,
-    driver: sqlite3.Database
-});
-
-module.exports = {
-    async get(sql, params = []) {
-        const db = await dbPromise;
-        return db.get(sql, params);
-    },
-    async all(sql, params = []) {
-        const db = await dbPromise;
-        return db.all(sql, params);
-    },
-    async run(sql, params = []) {
-        const db = await dbPromise;
-        return db.run(sql, params);
-    },
-    async prepare(sql) {
-        const db = await dbPromise;
-        return db.prepare(sql);
-    }
+    console.log(`MongoDB Connected: ${conn.connection.host}`);
+  } catch (err) {
+    console.error('MongoDB Connection Error:', err.message);
+    process.exit(1);
+  }
 };
+
+module.exports = connectDB;
