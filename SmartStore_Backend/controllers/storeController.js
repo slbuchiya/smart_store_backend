@@ -1,94 +1,118 @@
+// controllers/storeController.js
 const bcrypt = require("bcrypt");
 const Store = require("../models/Store");
 
-// GET All Stores
+// GET /api/stores
 exports.list = async (req, res) => {
-  const stores = await Store.find().sort({ createdAt: -1 });
-  res.json(stores);
+  try {
+    const stores = await Store.find().sort({ createdAt: -1 });
+    res.json(stores.map(s => {
+      const o = s.toObject();
+      delete o.password;
+      return o;
+    }));
+  } catch (err) {
+    console.error("store.list error:", err);
+    res.status(500).json({ error: "Failed to list stores" });
+  }
 };
 
-// CREATE Store
+// POST /api/stores
 exports.create = async (req, res) => {
   try {
-    console.log("Create Store Request:", req.body);
-
+    console.log("Received store creation request:", req.body);
     const payload = { ...req.body };
 
-    // Auto-default expiryDate (1 year) if missing
+    // Default expiryDate to 1 year from now if missing
     if (!payload.expiryDate) {
       const d = new Date();
       d.setFullYear(d.getFullYear() + 1);
       payload.expiryDate = d.toISOString();
+      console.log("expiryDate not provided — defaulting to:", payload.expiryDate);
     }
 
-    // Validation
+    // Required fields (match your model)
     const required = ["storeId", "password", "storeName", "ownerName", "mobile", "expiryDate"];
-    const missing = required.filter((f) => !payload[f]);
+    const missing = required.filter(f => {
+      return payload[f] === undefined || payload[f] === null || payload[f] === "";
+    });
     if (missing.length) {
-      return res.status(400).json({ error: `Missing fields: ${missing.join(", ")}` });
+      console.warn("Missing required fields:", missing);
+      return res.status(400).json({ error: `Missing required fields: ${missing.join(", ")}` });
     }
 
-    // Hash password
-    if (!payload.password.startsWith("$2")) {
-      payload.password = await bcrypt.hash(payload.password, 10);
+    // Hash password if not already hashed
+    if (payload.password && !String(payload.password).startsWith("$2")) {
+      const salt = await bcrypt.genSalt(10);
+      payload.password = await bcrypt.hash(String(payload.password), salt);
+      console.log("Password hashed for storeId:", payload.storeId);
     }
 
     const newStore = new Store(payload);
     await newStore.save();
 
-    console.log("Store saved:", newStore.storeId);
-    const output = newStore.toObject();
-    delete output.password;
+    console.log("Store saved successfully:", { storeId: newStore.storeId, id: newStore._id });
 
-    res.status(201).json(output);
+    const out = newStore.toObject();
+    delete out.password;
+    res.status(201).json(out);
   } catch (err) {
-    console.error("Store Create Error:", err);
-    if (err.code === 11000) {
-      return res.status(400).json({ error: "storeId must be unique" });
+    console.error("Error saving store (full):", err);
+    if (err && err.code === 11000) {
+      return res.status(400).json({ error: "Duplicate storeId or unique field conflict" });
     }
-    res.status(400).json({ error: err.message });
+    res.status(400).json({ error: err.message || "Failed to create store" });
   }
 };
 
-// UPDATE Store
+// PUT /api/stores/:storeId
 exports.update = async (req, res) => {
   try {
-    const { storeId } = req.params;
-
     const updated = await Store.findOneAndUpdate(
-      { storeId },
+      { storeId: req.params.storeId },
       req.body,
       { new: true, runValidators: true }
     );
-
-    if (!updated) {
-      return res.status(404).json({ error: "Store not found" });
-    }
-
-    res.json(updated);
+    if (!updated) return res.status(404).json({ error: "Store not found" });
+    const out = updated.toObject();
+    delete out.password;
+    res.json(out);
   } catch (err) {
-    console.error("Store Update Error:", err);
-    res.status(400).json({ error: err.message });
+    console.error("store.update error:", err);
+    res.status(400).json({ error: err.message || "Failed to update store" });
   }
 };
 
-// DELETE Store
+// DELETE /api/stores/:storeId
 exports.remove = async (req, res) => {
-  await Store.findOneAndDelete({ storeId: req.params.storeId });
-  res.json({ message: "Deleted Successfully" });
+  try {
+    await Store.findOneAndDelete({ storeId: req.params.storeId });
+    res.json({ message: "Deleted" });
+  } catch (err) {
+    console.error("store.remove error:", err);
+    res.status(400).json({ error: err.message || "Failed to delete store" });
+  }
 };
 
-// Store Owner Profile Update
+// PUT /api/stores/profile (authenticated route)
 exports.updateProfile = async (req, res) => {
-  const updated = await Store.findOneAndUpdate(
-    { storeId: req.storeId },
-    {
-      storeName: req.body.storeName,
-      address: req.body.address,
-      mobile: req.body.mobile,
-      gst: req.body.gst
-    },
-    { new: true }
-  );
-  res.json(updated);
+  try {
+    const updated = await Store.findOneAndUpdate(
+      { storeId: req.storeId },
+      {
+        storeName: req.body.storeName,
+        address: req.body.address,
+        mobile: req.body.mobile,
+        gst: req.body.gst
+      },
+      { new: true, runValidators: true }
+    );
+    if (!updated) return res.status(404).json({ error: "Store not found" });
+    const out = updated.toObject();
+    delete out.password;
+    res.json(out);
+  } catch (err) {
+    console.error("updateProfile error:", err);
+    res.status(400).json({ error: err.message || "Failed to update profile" });
+  }
 };
