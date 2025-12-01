@@ -1,41 +1,51 @@
+// controllers/storeController.js (replace the create export)
+const bcrypt = require('bcrypt');
 const Store = require('../models/Store');
 
-exports.list = async (req, res) => {
-    const stores = await Store.find().sort({ createdAt: -1 });
-    res.json(stores);
-};
-
 exports.create = async (req, res) => {
-    try {
-        const newStore = new Store(req.body);
-        await newStore.save();
-        res.status(201).json(newStore);
-    } catch (err) {
-        res.status(400).json({ error: err.message });
+  try {
+    console.log('Received store creation request:', req.body);
+
+    // clone payload so we can modify safely
+    const payload = { ...req.body };
+
+    // Provide a default expiryDate (1 year) if frontend didn't send one
+    if (!payload.expiryDate) {
+      const d = new Date();
+      d.setFullYear(d.getFullYear() + 1);
+      payload.expiryDate = d.toISOString();
+      console.log('No expiryDate provided — setting default:', payload.expiryDate);
     }
-};
 
-exports.update = async (req, res) => {
-    const updated = await Store.findOneAndUpdate({ storeId: req.params.storeId }, req.body, { new: true });
-    res.json(updated);
-};
+    // Basic required fields check (matches your model)
+    const required = ['storeId', 'password', 'storeName', 'ownerName', 'mobile', 'expiryDate'];
+    const missing = required.filter(f => !payload[f] && payload[f] !== 0);
+    if (missing.length) {
+      console.warn('Missing required fields:', missing);
+      return res.status(400).json({ error: `Missing required fields: ${missing.join(', ')}` });
+    }
 
-exports.remove = async (req, res) => {
-    await Store.findOneAndDelete({ storeId: req.params.storeId });
-    res.json({ message: 'Deleted' });
-};
+    // Hash password if not already hashed
+    if (payload.password && !payload.password.startsWith('$2')) {
+      const salt = await bcrypt.genSalt(10);
+      payload.password = await bcrypt.hash(payload.password, salt);
+      console.log('Password hashed for storeId:', payload.storeId);
+    }
 
-// Store Owner Profile Update
-exports.updateProfile = async (req, res) => {
-    const updated = await Store.findOneAndUpdate(
-        { storeId: req.storeId },
-        {
-            storeName: req.body.storeName,
-            address: req.body.address,
-            mobile: req.body.mobile,
-            gst: req.body.gst
-        },
-        { new: true }
-    );
-    res.json(updated);
+    const newStore = new Store(payload);
+    await newStore.save();
+
+    console.log('Store saved successfully:', { storeId: newStore.storeId, id: newStore._id });
+    const out = newStore.toObject();
+    delete out.password;
+    return res.status(201).json(out);
+  } catch (err) {
+    console.error('Error saving store (full):', err);
+    // handle duplicate key (unique index) specifically
+    if (err.code === 11000) {
+      return res.status(400).json({ error: 'Duplicate storeId or unique field conflict' });
+    }
+    // send back clear message
+    return res.status(400).json({ error: err.message || 'Failed to create store' });
+  }
 };
