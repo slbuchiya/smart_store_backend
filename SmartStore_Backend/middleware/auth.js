@@ -8,10 +8,12 @@ const auth = (req, res, next) => {
     }
 
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        req.user = decoded; // User info (id, role)
+        // 👇 FIX: Ahia "|| 'change_this_secret'" add karvu padse
+        // Jethi controller sathe match thay
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'change_this_secret');
+        
+        req.user = decoded; 
 
-        // જો યુઝર સ્ટોર ઓનર હોય, તો storeId સેટ કરો
         if (decoded.storeId) {
             req.storeId = decoded.storeId;
         }
