@@ -1,4 +1,3 @@
-// index.js update
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
@@ -12,21 +11,23 @@ app.use(express.json());
 
 connectDB();
 
-// Routes Mapping (Frontend Context sathe match karva)
+// Routes Mapping
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/stores', require('./routes/storeRoutes'));
 app.use('/api/products', require('./routes/productRoutes'));
 app.use('/api/suppliers', require('./routes/supplierRoutes'));
 app.use('/api/sales', require('./routes/saleRoutes'));
 app.use('/api/purchases', require('./routes/purchaseRoutes'));
+app.use('/api/orders', require('./routes/orderRoutes'));
 
-// 👇 aa nava routes add karva padse
-//app.use('/api/ledgers', require('./routes/customerRoutes')); // Customers mate
-app.use('/api/settings', require('./routes/settingsRoutes')); // Settings mate
+// ❌ AA BANNE LINES COMMENT KARVI JARURI CHE (Jo files na hoy to)
+// app.use('/api/ledgers', require('./routes/customerRoutes')); 
+// app.use('/api/settings', require('./routes/settingsRoutes')); 
 
-// Finance (Receipts & Payments) ne Transaction route sathe jodiye
+// Finance Routes - Typo Fixed Here 👇
 const transactionRoutes = require('./routes/transactionRoutes');
-app.use('/api/receipts', (req, res, next) => { req.query.type = 'Receipt'; next(); }, nHtransactionRoutes);
+
+app.use('/api/receipts', (req, res, next) => { req.query.type = 'Receipt'; next(); }, transactionRoutes);
 app.use('/api/payments', (req, res, next) => { req.query.type = 'Payment'; next(); }, transactionRoutes);
 app.use('/api/finance', transactionRoutes);
 
