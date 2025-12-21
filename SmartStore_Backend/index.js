@@ -25,15 +25,14 @@ app.use('/api/purchases', require('./routes/purchaseRoutes'));
 app.use('/api/orders', require('./routes/orderRoutes'));
 
 // ==========================
-// 2. Ledger Route (Fixed)
+// 2. Ledger Route (Fixed Typo Here)
 // ==========================
-// આ ફાઈલ હોવી ફરજિયાત છે: ./routes/customerRoutes.js
-appVm.use('/api/customers', require('./routes/customerRoutes'));
+// 👇 અહિયાં સુધારો કર્યો છે (appVm -> app)
+app.use('/api/customers', require('./routes/customerRoutes'));
 
 // ==========================
 // 3. Finance Routes (Receipts & Payments)
 // ==========================
-// આ ફાઈલ હોવી ફરજિયાત છે: ./routes/transactionRoutes.js
 const transactionRoutes = require('./routes/transactionRoutes');
 
 // Middleware to force 'type' for Receipts
