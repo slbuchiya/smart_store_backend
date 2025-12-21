@@ -12,6 +12,9 @@ app.use(express.json());
 connectDB();
 
 // Routes Mapping
+// ... બાકીનો કોડ સેમ રહેશે ...
+
+// Routes Mapping
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/stores', require('./routes/storeRoutes'));
 app.use('/api/products', require('./routes/productRoutes'));
@@ -20,16 +23,17 @@ app.use('/api/sales', require('./routes/saleRoutes'));
 app.use('/api/purchases', require('./routes/purchaseRoutes'));
 app.use('/api/orders', require('./routes/orderRoutes'));
 
-// ❌ AA BANNE LINES COMMENT KARVI JARURI CHE (Jo files na hoy to)
-// app.use('/api/ledgers', require('./routes/customerRoutes')); 
-// app.use('/api/settings', require('./routes/settingsRoutes')); 
+// ✅ Customers (Ledger) Route - આ લાઈન અન-કમેન્ટ કરો અને 'customers' કરો
+app.use('/api/customers', require('./routes/customerRoutes'));
 
-// Finance Routes - Typo Fixed Here 👇
+// Finance Routes (Receipts & Payments)
 const transactionRoutes = require('./routes/transactionRoutes');
 
+// Middleware to force 'type' based on route
 app.use('/api/receipts', (req, res, next) => { req.query.type = 'Receipt'; next(); }, transactionRoutes);
 app.use('/api/payments', (req, res, next) => { req.query.type = 'Payment'; next(); }, transactionRoutes);
 app.use('/api/finance', transactionRoutes);
+
 
 app.get('/', (req, res) => res.send('SmartStore API is Running...'));
 
