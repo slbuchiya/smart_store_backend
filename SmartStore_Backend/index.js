@@ -14,7 +14,7 @@ app.use(express.json());
 connectDB();
 
 // ==========================
-// 1. Core Routes
+// Routes Mapping
 // ==========================
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/stores', require('./routes/storeRoutes'));
@@ -23,38 +23,17 @@ app.use('/api/suppliers', require('./routes/supplierRoutes'));
 app.use('/api/sales', require('./routes/saleRoutes'));
 app.use('/api/purchases', require('./routes/purchaseRoutes'));
 app.use('/api/orders', require('./routes/orderRoutes'));
-
-// ==========================
-// 2. Ledger Route (Fixed Typo Here)
-// ==========================
-// 👇 અહિયાં સુધારો કર્યો છે (appVm -> app)
 app.use('/api/customers', require('./routes/customerRoutes'));
 
-// ==========================
-// 3. Finance Routes (Receipts & Payments)
-// ==========================
-const transactionRoutes = require('./routes/transactionRoutes');
+// ✅ OLD Transaction Routes removed
+// ✅ NEW: Separate Routes for Receipts & Payments
+app.use('/api/receipts', require('./routes/receiptRoutes'));
+app.use('/api/payments', require('./routes/paymentRoutes'));
 
-// Middleware to force 'type' for Receipts
-app.use('/api/receipts', (req, res, next) => {
-    req.query.type = 'Receipt';
-    next();
-}, transactionRoutes);
-
-// Middleware to force 'type' for Payments
-app.use('/api/payments', (req, res, next) => {
-    req.query.type = 'Payment';
-    next();
-}, transactionRoutes);
-
-// General Finance Route (Optional)
-app.use('/api/finance', transactionRoutes);
-
-// ==========================
-// 4. Server Start
-// ==========================
+// Root Endpoint
 app.get('/', (req, res) => res.send('SmartStore API is Running...'));
 
+// Server Start
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
