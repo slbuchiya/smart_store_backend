@@ -4,7 +4,14 @@ const controller = require('../controllers/saleController');
 const auth = require('../middleware/auth');
 
 router.use(auth);
+
+// List Sales
 router.get('/', controller.list);
+
+// Create Sale
 router.post('/', controller.create);
+
+// ✅ NEW: Delete Sale Route
+router.delete('/:id', controller.remove);
 
 module.exports = router;
