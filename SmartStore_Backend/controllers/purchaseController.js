@@ -2,23 +2,49 @@ const Purchase = require('../models/Purchase');
 const Product = require('../models/Product');
 const mongoose = require('mongoose');
 
-// 1. Create Purchase (Increase Stock)
+// 1. Create Purchase (with Weighted Average Cost Logic)
 exports.create = async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
         const purchaseData = { ...req.body, storeId: req.storeId };
 
+        // Save Purchase Entry
         const purchase = new Purchase(purchaseData);
         await purchase.save({ session });
 
-        // Increase Stock
+        // Update Product Stock & Calculate Weighted Average Cost
         for (const line of purchaseData.lines) {
-            await Product.findOneAndUpdate(
-                { _id: line.productId, storeId: req.storeId },
-                { $inc: { stock: Number(line.qty) } },
-                { session }
-            );
+            // પ્રોડક્ટ શોધો (Find Product)
+            const product = await Product.findOne({ _id: line.productId, storeId: req.storeId }).session(session);
+
+            if (product) {
+                const oldStock = Number(product.stock) || 0;
+                const oldCost = Number(product.costPrice) || 0;
+                const newQty = Number(line.qty) || 0;
+                const newCost = Number(line.price) || 0; // ખરીદી કિંમત (Purchase Price)
+
+                // 🔢 Weighted Average Formula:
+                // (જૂનો સ્ટોક કિંમત + નવો સ્ટોક કિંમત) / કુલ સ્ટોક
+                let updatedCostPrice = oldCost;
+                const totalQty = oldStock + newQty;
+
+                if (totalQty > 0) {
+                    const totalOldValue = oldStock * oldCost;
+                    const totalNewValue = newQty * newCost;
+                    updatedCostPrice = (totalOldValue + totalNewValue) / totalQty;
+                }
+
+                // અપડેટ કરો: નવો સ્ટોક અને નવી એવરેજ કિંમત
+                await Product.findOneAndUpdate(
+                    { _id: line.productId, storeId: req.storeId },
+                    {
+                        $inc: { stock: newQty }, // સ્ટોક વધારો
+                        $set: { costPrice: Number(updatedCostPrice.toFixed(2)) } // નવી સરેરાશ કિંમત સેટ કરો
+                    },
+                    { session }
+                );
+            }
         }
 
         await session.commitTransaction();
@@ -41,7 +67,7 @@ exports.list = async (req, res) => {
     }
 };
 
-// 3. Delete Purchase (Decrease Stock) -> ✅ NEW FUNCTION
+// 3. Delete Purchase (Decrease Stock)
 exports.remove = async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -56,6 +82,7 @@ exports.remove = async (req, res) => {
         }
 
         // A. Reverse Stock (જેટલો માલ ખરીદ્યો હતો તે પાછો ઓછો કરો)
+        // Note: Delete કરતી વખતે આપણે Average Cost પાછી બદલતા નથી, તે જટિલ છે.
         for (const line of purchase.lines) {
             if (line.productId) {
                 await Product.findOneAndUpdate(
