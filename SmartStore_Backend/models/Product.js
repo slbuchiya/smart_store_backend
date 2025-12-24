@@ -13,6 +13,7 @@ const productSchema = new mongoose.Schema({
     costPrice: { type: Number, default: 0 },
     sellPrice: { type: Number, default: 0 },
     reorder: { type: Number, default: 5 },
+    gstPercent: { type: Number, default: 0 },
     image: String
 }, { timestamps: true });
 
