@@ -3,6 +3,10 @@ const mongoose = require('mongoose');
 const productSchema = new mongoose.Schema({
     storeId: { type: String, required: true, index: true },
     name: { type: String, required: true },
+
+    // ✅ NEW: Barcode Field ઉમેર્યું
+    barcode: { type: String, default: "" },
+
     category: { type: String, default: 'General' },
     unit: { type: String, default: 'pcs' },
     stock: { type: Number, default: 0 },
