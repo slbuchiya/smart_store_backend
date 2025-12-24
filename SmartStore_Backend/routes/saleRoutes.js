@@ -11,7 +11,10 @@ router.get('/', controller.list);
 // Create Sale
 router.post('/', controller.create);
 
-// ✅ NEW: Delete Sale Route
+// ✅ NEW: Update Sale Route
+router.put('/:id', controller.update);
+
+// Delete Sale Route
 router.delete('/:id', controller.remove);
 
 module.exports = router;

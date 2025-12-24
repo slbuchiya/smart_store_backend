@@ -42,7 +42,55 @@ exports.list = async (req, res) => {
     }
 };
 
-// 3. Delete Sale (Restore Stock) -> ✅ NEW FUNCTION
+// ✅ 3. Update Sale (Stock Logic Added) -> NEW FUNCTION
+exports.update = async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+        const { id } = req.params;
+        const updates = { ...req.body, storeId: req.storeId };
+
+        // જૂનો સેલ શોધો
+        const oldSale = await Sale.findOne({ _id: id, storeId: req.storeId }).session(session);
+        if (!oldSale) {
+            await session.abortTransaction();
+            return res.status(404).json({ error: "Sale not found" });
+        }
+
+        // A. Revert Old Stock (જૂનો સ્ટોક પાછો ઉમેરો)
+        for (const line of oldSale.lines) {
+            await Product.findOneAndUpdate(
+                { _id: line.productId, storeId: req.storeId },
+                { $inc: { stock: Number(line.qty) } }, // + Plus
+                { session }
+            );
+        }
+
+        // B. Apply New Stock (નવો સ્ટોક બાદ કરો)
+        for (const line of updates.lines) {
+            await Product.findOneAndUpdate(
+                { _id: line.productId, storeId: req.storeId },
+                { $inc: { stock: -Number(line.qty) } }, // - Minus
+                { session }
+            );
+        }
+
+        // C. Update Sale Entry
+        const updatedSale = await Sale.findByIdAndUpdate(id, updates, { new: true, session });
+
+        await session.commitTransaction();
+        res.json(updatedSale);
+
+    } catch (err) {
+        await session.abortTransaction();
+        console.error("Update Sale Error:", err);
+        res.status(500).json({ error: err.message });
+    } finally {
+        session.endSession();
+    }
+};
+
+// 4. Delete Sale (Restore Stock)
 exports.remove = async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
