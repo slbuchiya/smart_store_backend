@@ -37,8 +37,20 @@ exports.storeLogin = async (req, res) => {
       }
     }
 
+    // 1. Check if Suspended
     if (store.status === 'suspended') {
       return res.status(403).json({ error: 'Account Suspended' });
+    }
+
+    // ✅ 2. Check if Plan Expired (New Logic added here)
+    if (store.expiryDate) {
+        const today = new Date();
+        const expiry = new Date(store.expiryDate);
+        
+        // જો આજની તારીખ એક્સપાયરી ડેટ કરતા મોટી હોય તો બ્લોક કરો
+        if (today > expiry) {
+            return res.status(403).json({ error: 'Plan Expired. Please contact Admin.' });
+        }
     }
 
     const token = jwt.sign(
@@ -57,7 +69,8 @@ exports.storeLogin = async (req, res) => {
         ownerName: store.ownerName,
         mobile: store.mobile,
         email: store.email,
-        status: store.status
+        status: store.status,
+        expiryDate: store.expiryDate // ફ્રન્ટએન્ડ પર બતાવવા માટે
       }
     });
 
