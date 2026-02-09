@@ -2,7 +2,7 @@ const Purchase = require('../models/Purchase');
 const Product = require('../models/Product');
 const mongoose = require('mongoose');
 
-// 1. Create Purchase (with Weighted Average Cost Logic)
+// 1. Create Purchase (Latest Price Update Logic)
 exports.create = async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -13,34 +13,15 @@ exports.create = async (req, res) => {
         const purchase = new Purchase(purchaseData);
         await purchase.save({ session });
 
-        // Update Product Stock & Calculate Weighted Average Cost
+        // Update Product Stock & Set Latest Cost Price
         for (const line of purchaseData.lines) {
-            // પ્રોડક્ટ શોધો (Find Product)
-            const product = await Product.findOne({ _id: line.productId, storeId: req.storeId }).session(session);
-
-            if (product) {
-                const oldStock = Number(product.stock) || 0;
-                const oldCost = Number(product.costPrice) || 0;
-                const newQty = Number(line.qty) || 0;
-                const newCost = Number(line.price) || 0; // ખરીદી કિંમત (Purchase Price)
-
-                // 🔢 Weighted Average Formula:
-                // (જૂનો સ્ટોક કિંમત + નવો સ્ટોક કિંમત) / કુલ સ્ટોક
-                let updatedCostPrice = oldCost;
-                const totalQty = oldStock + newQty;
-
-                if (totalQty > 0) {
-                    const totalOldValue = oldStock * oldCost;
-                    const totalNewValue = newQty * newCost;
-                    updatedCostPrice = (totalOldValue + totalNewValue) / totalQty;
-                }
-
-                // અપડેટ કરો: નવો સ્ટોક અને નવી એવરેજ કિંમત
+            // સીધો અપડેટ કમાન્ડ (હવે જૂની કિંમત કે એવરેજ કાઢવાની જરૂર નથી)
+            if (line.productId) {
                 await Product.findOneAndUpdate(
                     { _id: line.productId, storeId: req.storeId },
                     {
-                        $inc: { stock: newQty }, // સ્ટોક વધારો
-                        $set: { costPrice: Number(updatedCostPrice.toFixed(2)) } // નવી સરેરાશ કિંમત સેટ કરો
+                        $inc: { stock: Number(line.qty) }, // સ્ટોક વધારો
+                        $set: { costPrice: Number(line.price) } // ✅ ફેરફાર: સીધી નવી કિંમત સેટ કરો (Latest Price)
                     },
                     { session }
                 );
