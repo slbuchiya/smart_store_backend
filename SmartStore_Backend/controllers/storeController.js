@@ -65,9 +65,15 @@ exports.create = async (req, res) => {
   }
 };
 
-// PUT /api/stores/:storeId
+// PUT /api/stores/:storeId (Admin Update)
 exports.update = async (req, res) => {
   try {
+    // If password is being updated, hash it
+    if (req.body.password && !req.body.password.startsWith("$2")) {
+       const salt = await bcrypt.genSalt(10);
+       req.body.password = await bcrypt.hash(req.body.password, salt);
+    }
+
     const updated = await Store.findOneAndUpdate(
       { storeId: req.params.storeId },
       req.body,
@@ -94,16 +100,34 @@ exports.remove = async (req, res) => {
   }
 };
 
-// PUT /api/stores/profile (authenticated route)
+// ✅ NEW: GET /api/stores/profile (To get current plan details on refresh)
+exports.getProfile = async (req, res) => {
+  try {
+    // req.storeId comes from auth middleware
+    const store = await Store.findOne({ storeId: req.storeId });
+    if (!store) return res.status(404).json({ error: "Store not found" });
+    
+    const out = store.toObject();
+    delete out.password; // Hide password
+    res.json(out);
+  } catch (err) {
+    console.error("getProfile error:", err);
+    res.status(500).json({ error: "Failed to fetch profile" });
+  }
+};
+
+// PUT /api/stores/profile (Store Owner Update)
 exports.updateProfile = async (req, res) => {
   try {
     const updated = await Store.findOneAndUpdate(
       { storeId: req.storeId },
       {
         storeName: req.body.storeName,
+        ownerName: req.body.ownerName, // Added ownerName updates too
+        email: req.body.email,         // Added email updates too
         address: req.body.address,
         mobile: req.body.mobile,
-        gst: req.body.gst
+        gst: req.body.gst || req.body.gstNo
       },
       { new: true, runValidators: true }
     );

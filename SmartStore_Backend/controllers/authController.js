@@ -42,7 +42,7 @@ exports.storeLogin = async (req, res) => {
       return res.status(403).json({ error: 'Account Suspended' });
     }
 
-    // ✅ 2. Check if Plan Expired (New Logic added here)
+    // ✅ 2. Check if Plan Expired
     if (store.expiryDate) {
         const today = new Date();
         const expiry = new Date(store.expiryDate);
@@ -70,7 +70,8 @@ exports.storeLogin = async (req, res) => {
         mobile: store.mobile,
         email: store.email,
         status: store.status,
-        expiryDate: store.expiryDate // ફ્રન્ટએન્ડ પર બતાવવા માટે
+        expiryDate: store.expiryDate, // ફ્રન્ટએન્ડ પર બતાવવા માટે
+        planType: store.planType      // ✅ આ લાઈન ઉમેરી છે (Monthly/Yearly/Lifetime)
       }
     });
 
