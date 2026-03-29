@@ -91,10 +91,11 @@ exports.remove = async (req, res) => {
 // 4. Update Purchase
 exports.update = async (req, res) => {
     try {
-        const purchaseId = req.params.id;
-        
+        const idParam = req.params.id; // અહીં 'PUR-2026-0002' આવશે
+
+        // અહિયાં _id ની જગ્યાએ 'purchaseId' ફિલ્ડથી ડેટા સર્ચ કરીશું
         const updatedPurchase = await Purchase.findOneAndUpdate(
-            { _id: purchaseId, storeId: req.storeId },
+            { purchaseId: idParam, storeId: req.storeId }, 
             req.body,
             { new: true }
         );
