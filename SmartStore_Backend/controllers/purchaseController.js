@@ -88,3 +88,24 @@ exports.remove = async (req, res) => {
         session.endSession();
     }
 };
+// 4. Update Purchase
+exports.update = async (req, res) => {
+    try {
+        const purchaseId = req.params.id;
+        
+        const updatedPurchase = await Purchase.findOneAndUpdate(
+            { _id: purchaseId, storeId: req.storeId },
+            req.body,
+            { new: true }
+        );
+
+        if (!updatedPurchase) {
+            return res.status(404).json({ error: "Purchase not found" });
+        }
+
+        res.json(updatedPurchase);
+    } catch (err) {
+        console.error("Update Purchase Error:", err);
+        res.status(500).json({ error: err.message });
+    }
+};

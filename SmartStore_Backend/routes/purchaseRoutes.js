@@ -11,7 +11,10 @@ router.get('/', controller.list);
 // Create
 router.post('/', controller.create);
 
-// ✅ NEW: Delete Route
+//  Update Route 
+router.put('/:id', controller.update);
+
+//  Delete Route
 router.delete('/:id', controller.remove);
 
 module.exports = router;
